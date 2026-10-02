@@ -451,7 +451,7 @@ head on our own volunteer+clone data.
 **Fine-tuning guardrails:** label order verified from the pretrained `id2label`; sample
 rate read from the feature-extractor config; per-epoch + `best_<tag>` checkpoints with
 `--resume` (a Colab runtime drop loses nothing); optional `--holdout <speaker>` for an
-honest A/B; a guard that every speaker has both real and cloned clips.
+honest A/B; a guard that every speaker has both real and cloned clips
 
 ---
 

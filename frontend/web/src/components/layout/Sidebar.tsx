@@ -1,75 +1,91 @@
 /**
- * src/components/layout/Sidebar.tsx
+ * src/components/layout/Sidebar.tsx — Navigation rail
+ *
+ * Wider 64px (w-16) icon rail with generous touch targets and spacing.
  */
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import {
-  ShieldAlert,
-  Radio,
-  FileAudio,
-  UserCheck,
-  Bell,
-  FileSpreadsheet,
-  Settings,
-  Activity,
-} from 'lucide-react';
+import { Tooltip } from '@/components/ui/Tooltip';
+import { ShieldCheck, FileLock2, AudioWaveform, Radio, ShieldAlert, ScrollText, Settings, LayoutDashboard } from 'lucide-react';
+
+interface NavItem {
+  to: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  accent: string;
+}
+
+const navItems: NavItem[] = [
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, accent: 'rgb(var(--accent))' },
+  { to: '/live-call', label: 'Live Monitor', icon: Radio, accent: 'rgb(var(--risk-high))' },
+  { to: '/analyze', label: 'Analyze', icon: AudioWaveform, accent: 'rgb(var(--accent))' },
+  { to: '/alerts', label: 'Alerts', icon: ShieldAlert, accent: 'rgb(var(--risk-critical))' },
+  { to: '/audit', label: 'Audit Log', icon: ScrollText, accent: 'rgb(var(--risk-medium))' },
+  { to: '/settings', label: 'Settings', icon: Settings, accent: 'rgb(var(--accent-soft))' },
+];
 
 export function Sidebar() {
-  const navItems = [
-    { to: '/', label: 'Overview', icon: Activity },
-    { to: '/live-call', label: 'Live Monitoring', icon: Radio },
-    { to: '/analyze', label: 'Batch Analysis', icon: FileAudio },
-    { to: '/voiceprints', label: 'Voiceprints', icon: UserCheck },
-    { to: '/alerts', label: 'Alerts Center', icon: Bell },
-    { to: '/audit', label: 'Audit & Evidence', icon: FileSpreadsheet },
-    { to: '/settings', label: 'System Settings', icon: Settings },
-  ];
-
   return (
-    <aside className="w-64 bg-bg-surface border-r border-bg-border flex flex-col h-screen shrink-0">
-      {/* Brand */}
-      <div className="p-5 border-b border-bg-border flex items-center gap-3">
-        <div className="w-9 h-9 rounded-lg bg-accent flex items-center justify-center text-white shadow-md">
-          <ShieldAlert className="w-5 h-5" />
-        </div>
-        <div>
-          <h1 className="font-bold text-base leading-none text-text-primary tracking-tight">VoxDetect</h1>
-          <span className="text-[10px] text-text-secondary uppercase tracking-wider">Voice Authenticity Guard</span>
-        </div>
-      </div>
-
-      {/* Nav Links */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        <div className="px-3 py-2 text-[10px] font-bold text-text-muted uppercase tracking-wider">
-          Threat Monitoring
-        </div>
+    <aside className="flex w-16 shrink-0 flex-col items-center select-none">
+      {/* Nav icons with generous spacing and comfortable targets */}
+      <nav className="flex flex-col items-center gap-3 pt-10 flex-1 w-full">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
-            <NavLink
+<NavLink
               key={item.to}
               to={item.to}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors ${
-                  isActive
-                    ? 'bg-accent/15 text-accent border border-accent/20 font-semibold'
-                    : 'text-text-secondary hover:bg-bg-card hover:text-text-primary'
-                }`
-              }
+              className="relative w-full flex justify-center"
             >
-              <Icon className="w-4 h-4" />
-              <span>{item.label}</span>
+              {({ isActive }) => (
+                <Tooltip label={item.label} side="right">
+                  <span
+                    className={`flex items-center justify-center w-11 h-11 rounded-xl transition-colors duration-150 ${
+                      isActive
+                        ? 'text-[rgb(var(--accent))]'
+                        : 'text-[rgb(var(--text-muted))] hover:text-[rgb(var(--text-secondary))] hover:bg-[var(--hover-bg)]'
+                    }`}
+                    style={isActive ? { color: item.accent } : undefined}
+                  >
+                    {/* Active indicator — left edge bar */}
+                    {isActive && (
+                      <span
+                        className="absolute left-1 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full"
+                        style={{ background: item.accent }}
+                      />
+                    )}
+                    <Icon className="w-5 h-5" strokeWidth={isActive ? 2.2 : 1.8} />
+                  </span>
+                </Tooltip>
+              )}
             </NavLink>
           );
         })}
       </nav>
 
-      {/* Privacy Notice Footer */}
-      <div className="p-4 border-t border-bg-border bg-bg-surface/50 text-[11px] text-text-muted">
-        <p className="font-medium text-text-secondary mb-1">🔒 Privacy-First</p>
-        <p className="leading-tight text-[10px]">
-          Audio processed in-memory only. No raw recordings persisted.
-        </p>
+      {/* Bottom: privacy policy link */}
+      <div className="pb-3 flex justify-center w-full">
+<NavLink
+          to="/privacy"
+          className="relative w-full flex justify-center"
+        >
+          {({ isActive }) => (
+            <Tooltip label="Privacy Policy & Compliance" side="right">
+              <span
+                className={`flex items-center justify-center w-11 h-11 rounded-xl transition-colors duration-150 ${
+                  isActive
+                    ? 'text-[rgb(var(--accent))]'
+                    : 'text-[rgb(var(--text-muted))] hover:text-[rgb(var(--text-secondary))] hover:bg-[var(--hover-bg)]'
+                }`}
+              >
+                {isActive && (
+                  <span className="absolute left-1 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-[rgb(var(--accent))]" />
+                )}
+                <FileLock2 className="w-5 h-5" strokeWidth={isActive ? 2.2 : 1.8} />
+              </span>
+            </Tooltip>
+          )}
+        </NavLink>
       </div>
     </aside>
   );

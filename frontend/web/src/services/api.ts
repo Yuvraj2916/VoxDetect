@@ -12,6 +12,7 @@ import type {
   HealthResponse,
   CallContext,
   OrgType,
+  FusionMask,
 } from '@/types';
 
 const BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000';
@@ -31,7 +32,14 @@ export interface ApiError {
 function normalizeError(err: any): ApiError {
   if (axios.isAxiosError(err)) {
     const status = err.response?.status ?? 0;
-    const detail = err.response?.data?.detail;
+    const body = err.response?.data;
+    // Backend structured errors: { "error": { code, message } }
+    const structured = body?.error;
+    if (structured && typeof structured === 'object' && 'code' in structured) {
+      return { code: structured.code, message: structured.message, status };
+    }
+    // Legacy/inline detail: "detail": { code, message } | "string"
+    const detail = body?.detail;
     if (detail && typeof detail === 'object' && 'code' in detail) {
       return { code: detail.code, message: detail.message, status };
     }
@@ -72,13 +80,17 @@ export async function getBasicHealth(): Promise<HealthResponse> {
 export async function analyzeCall(
   audioFile: File,
   org: OrgType,
-  context: Partial<CallContext> | null = null
+  context: Partial<CallContext> | null = null,
+  fusion: Partial<Record<keyof FusionMask, boolean>> | null = null
 ): Promise<AnalysisResponse> {
   const formData = new FormData();
   formData.append('file', audioFile);
   formData.append('org', org);
   if (context) {
     formData.append('context', JSON.stringify(context));
+  }
+  if (fusion) {
+    formData.append('fusion', JSON.stringify(fusion));
   }
   try {
     const res = await apiClient.post<AnalysisResponse>('/v1/analyze-call', formData, {

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="voxGrad" x1="12" y1="12" x2="52" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00e5ff" />
+      <stop offset="50%" stop-color="#14b8a6" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+  </defs>
+
+  <!-- Transparent background (no squircle) — matches the navbar VoxDetectLogo -->
+
+  <!-- Oscilloscope "V": Sound frequency bars stepping down symmetrically -->
+  <rect x="12" y="13" width="4.5" height="17" rx="2.25" fill="url(#voxGrad)" />
+  <rect x="19" y="19" width="4.5" height="19" rx="2.25" fill="url(#voxGrad)" />
+  <rect x="26" y="27" width="4.5" height="16" rx="2.25" fill="url(#voxGrad)" />
+  <rect x="33.5" y="27" width="4.5" height="16" rx="2.25" fill="url(#voxGrad)" />
+  <rect x="40.5" y="19" width="4.5" height="19" rx="2.25" fill="url(#voxGrad)" />
+  <rect x="47.5" y="13" width="4.5" height="17" rx="2.25" fill="url(#voxGrad)" />
+
+  <!-- Vertex Authenticity Focus Node -->
+  <circle cx="32" cy="50" r="2.8" fill="#00e5ff" />
+</svg>

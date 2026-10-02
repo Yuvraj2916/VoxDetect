@@ -73,3 +73,10 @@ backend/temp/
 # Dataset archive packaged locally for manual Drive upload (not for git)
 test_data.zip
 test_data.zip.manifest.json
+script.md
+qa.md
+# TypeScript incremental build cache
+frontend/web/*.tsbuildinfo
+
+
+.vercel

@@ -1,10 +1,10 @@
 {
   "organization": "enterprise",
   "thresholds": {
-    "low_max": 30,
-    "medium_max": 70,
-    "high_min": 70,
-    "critical_min": 90
+    "low_max": 7.5,
+    "medium_max": 85,
+    "high_min": 25,
+    "critical_min": 85
   },
   "actions": {
     "low": "No action required. Continue normally.",
@@ -14,6 +14,9 @@
   },
   "webhook": {
     "url": null,
-    "trigger_on": ["high", "critical"]
+    "trigger_on": [
+      "high",
+      "critical"
+    ]
   }
 }

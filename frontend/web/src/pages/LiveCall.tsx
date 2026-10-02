@@ -1,22 +1,21 @@
 /**
- * src/pages/LiveCall.tsx
- * The core live-call voice authenticity monitoring screen.
+ * src/pages/LiveCall.tsx — Live call voice authenticity monitoring
  */
 import React, { useState } from 'react';
 import { useOrganization } from '@/context/OrganizationContext';
 import { useLiveMonitoring } from '@/hooks/useLiveMonitoring';
-import { RiskGauge } from '@/components/risk/RiskGauge';
+import { RiskGauge, getBandSubtext } from '@/components/risk/RiskGauge';
 import { RiskTrendChart } from '@/components/risk/RiskTrendChart';
 import { SignalBreakdown } from '@/components/risk/SignalBreakdown';
 import { RiskBandBadge } from '@/components/risk/RiskBandBadge';
+import { AudioVisualizer } from '@/components/risk/AudioVisualizer';
 import { ORG_CONFIGS } from '@/types';
-import { Mic, MicOff, AlertOctagon, ShieldAlert, SlidersHorizontal, Info } from 'lucide-react';
+import { Mic, MicOff, AlertOctagon, ShieldAlert, Radio } from 'lucide-react';
 
 export function LiveCall() {
   const { org } = useOrganization();
   const orgPolicy = ORG_CONFIGS[org];
 
-  // Context flags
   const [context, setContext] = useState({
     first_time_contact: false,
     high_value: false,
@@ -40,168 +39,208 @@ export function LiveCall() {
     startMonitoring,
     stopMonitoring,
     isMonitoring,
+    audioLevel,
   } = useLiveMonitoring(org, context);
 
-  const displayScore = rollingRisk ?? riskScore;
+  const displayScore = riskScore ?? rollingRisk;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-4 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-bg-border pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold tracking-tight text-text-primary">
-              Live Call Monitoring
-            </h1>
-            {isMonitoring && (
-              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                LIVE INTERCEPT ACTIVE
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-text-secondary mt-1">
-            Real-time acoustic & prosody stream analysis for synthetic speech detection.
+          <h1 className="text-lg font-semibold text-[rgb(var(--text-primary))]">
+            Live Call Monitoring
+          </h1>
+          <p className="text-xs text-[rgb(var(--text-muted))] mt-0.5">
+            Stream your microphone and classify each chunk in real time
           </p>
         </div>
 
-        {/* Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {!isMonitoring ? (
-            <button
-              onClick={startMonitoring}
-              className="btn btn-primary btn-lg shadow-glow-medium flex items-center gap-2"
-            >
-              <Mic className="w-5 h-5" />
-              Start Live Monitoring
+            <button onClick={startMonitoring} className="btn btn-primary">
+              <Mic className="w-4 h-4" /> Start Monitoring
             </button>
           ) : (
-            <button
-              onClick={stopMonitoring}
-              className="btn btn-danger btn-lg flex items-center gap-2 shadow-lg"
-            >
-              <MicOff className="w-5 h-5" />
-              Stop Monitoring
+            <button onClick={stopMonitoring} className="btn btn-danger">
+              <MicOff className="w-4 h-4" /> Stop
             </button>
           )}
         </div>
       </div>
 
-      {/* Error Banner */}
+      {/* Error */}
       {wsError && (
-        <div className="p-3 bg-red-950/80 border border-red-800 rounded-lg text-xs text-red-200 flex items-center gap-2">
-          <AlertOctagon className="w-4 h-4 shrink-0 text-red-400" />
-          <span>{wsError}</span>
+        <div className="p-2.5 rounded-md bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] text-xs text-red-300 flex items-center gap-2">
+          <AlertOctagon className="w-3.5 h-3.5 shrink-0" />
+          <span className="font-mono">{wsError}</span>
         </div>
       )}
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Gauge & Trend */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Main Risk Display Card */}
-          <div className="card flex flex-col md:flex-row items-center justify-around p-6 gap-6">
-            <div className="flex flex-col items-center">
-              <RiskGauge score={displayScore} band={band} size={220} />
+      {/* Main grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Left: Hero + Trend */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Hero */}
+          <div className="card p-0 overflow-hidden">
+            {/* Card toolbar */}
+            <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-[rgb(var(--border-subtle))] bg-[var(--hover-bg)]">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Radio className="w-4 h-4 text-[rgb(var(--accent-soft))] shrink-0" />
+                <div className="min-w-0">
+                  <span className="text-sm font-semibold text-[rgb(var(--text-primary))]">
+                    Live Voice Analysis
+                  </span>
+                  <span className="text-[10px] text-[rgb(var(--text-muted))] block truncate">
+                    Mic feed → wav2vec2-XLSR classification
+                  </span>
+                </div>
+              </div>
+
+              {isMonitoring ? (
+                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[rgba(239,68,68,0.2)] border border-[rgba(239,68,68,0.5)] text-[rgb(var(--risk-critical))] shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[rgb(var(--risk-critical))] animate-pulse" />
+                  LIVE
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[var(--hover-bg)] border border-[rgb(var(--border-subtle))] text-[rgb(var(--text-muted))] shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[rgb(var(--text-muted))]" />
+                  IDLE
+                </span>
+              )}
             </div>
 
-            <div className="flex-1 space-y-4 max-w-sm">
-              <div className="space-y-1">
-                <span className="text-xs text-text-muted font-mono uppercase">Current Threat Status</span>
-                <div className="flex items-center gap-3">
-                  <RiskBandBadge band={band} severity={severity} size="lg" />
-                  {flagged && (
-                    <span className="text-xs font-bold text-red-400 flex items-center gap-1">
-                      <ShieldAlert className="w-3.5 h-3.5" /> FLAGGED
-                    </span>
-                  )}
-                </div>
+            {/* Two aligned columns: (mic + gauge) | (threat status + action + stats) */}
+            <div className="px-6 py-6 grid grid-cols-1 md:grid-cols-2 gap-10 items-stretch">
+              {/* Left column — mic directly above the semicircle */}
+              <div className="flex flex-col items-center gap-8">
+                {isMonitoring ? (
+                  <button
+                    onClick={stopMonitoring}
+                    title="Stop monitoring"
+                    className="cursor-pointer group p-2 -m-2 rounded-2xl outline-none focus:outline-none focus-visible:outline-none"
+                    aria-label="Stop monitoring"
+                  >
+                    <AudioVisualizer active={isMonitoring} band={band} flagged={flagged} level={audioLevel} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={startMonitoring}
+                    title="Start monitoring"
+                    className="cursor-pointer group p-2 -m-2 rounded-2xl outline-none focus:outline-none focus-visible:outline-none"
+                    aria-label="Start monitoring"
+                  >
+                    <AudioVisualizer active={false} band={band} flagged={flagged} level={0} />
+                  </button>
+                )}
+                <RiskGauge score={displayScore} band={band} size={160} showLabel={false} />
               </div>
 
-              {/* Recommended Action Box */}
-              <div className="p-3.5 rounded-lg bg-bg-surface border border-bg-border space-y-1.5">
-                <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
-                  <Info className="w-3.5 h-3.5 text-accent" /> Policy Action ({org.toUpperCase()})
-                </span>
-                <p className="text-xs font-medium text-text-primary leading-relaxed">
-                  {recommendedAction || orgPolicy.actions[band as keyof typeof orgPolicy.actions] || 'Awaiting live audio chunks for risk evaluation.'}
-                </p>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="p-2 rounded bg-bg-surface border border-bg-border">
-                  <span className="text-text-muted block">Chunks Analyzed</span>
-                  <span className="font-mono font-bold text-text-primary">{chunkCount}</span>
+              {/* Right column — threat status aligned with the mic; action + stats pinned to the gauge */}
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-col items-center gap-1.5 pt-10">
+                  <span className="text-xs font-medium font-mono uppercase tracking-wider text-[rgb(var(--text-secondary))] text-center">
+                    Threat Status
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <RiskBandBadge band={band} severity={severity} size="lg" />
+                    {flagged && (
+                      <span className="text-[10px] font-mono font-semibold text-[rgb(var(--risk-high))] flex items-center gap-1">
+                        <ShieldAlert className="w-3 h-3" /> FLAGGED
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-[rgb(var(--text-secondary))] leading-snug text-center min-h-[15px] mt-0.5">
+                    {band ? getBandSubtext(band) : 'Awaiting analysis'}
+                  </span>
                 </div>
-                <div className="p-2 rounded bg-bg-surface border border-bg-border">
-                  <span className="text-text-muted block">Connection</span>
-                  <span className="font-mono font-bold text-accent capitalize">{wsStatus}</span>
+
+                {/* Action + stats grouped and pinned to the bottom (aligned with the gauge) */}
+                <div className="flex flex-col gap-4 mt-auto mb-12">
+                  {/* Recommended action — prominent, unmissable */}
+                  <div className="rounded-lg border border-[rgb(var(--accent))/0.3] bg-[rgb(var(--accent))/0.08] p-3.5 flex items-start gap-3">
+                    <div className="shrink-0 w-7 h-7 rounded-md bg-[rgb(var(--accent))/0.15] flex items-center justify-center">
+                      <ShieldAlert className="w-4 h-4 text-[rgb(var(--accent-soft))]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgb(var(--accent-soft))]">
+                          Action Required
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold uppercase bg-[rgb(var(--accent))/0.15] border border-[rgb(var(--accent))/0.25] text-[rgb(var(--accent-soft))]">
+                          {org.toUpperCase()}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[13px] font-medium leading-snug text-[rgb(var(--text-primary))]">
+                        {recommendedAction ||
+                          orgPolicy.actions[band as keyof typeof orgPolicy.actions] ||
+                          'Awaiting analysis'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="w-full grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="p-2.5 rounded-md bg-[var(--hover-bg)] border border-[rgb(var(--accent))/0.3] text-center">
+                      <span className="text-[rgb(var(--text-muted))] block">Chunks</span>
+                      <span className="font-mono font-semibold text-[rgb(var(--text-primary))]">{chunkCount}</span>
+                    </div>
+                    <div className="p-2.5 rounded-md bg-[var(--hover-bg)] border border-[rgb(var(--accent))/0.3] text-center">
+                      <span className="text-[rgb(var(--text-muted))] block">Status</span>
+                      <span className="font-mono font-semibold text-[rgb(var(--accent-soft))] capitalize">{wsStatus}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Rolling Risk History Chart */}
-          <div className="card p-5 space-y-3">
-            <div className="flex justify-between items-center">
+          {/* Trend chart */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-sm font-semibold text-text-primary">Live Risk Score Trend</h3>
-                <p className="text-[11px] text-text-secondary">Rolling window score across streaming chunks</p>
+                <h3 className="text-sm font-semibold text-[rgb(var(--text-primary))]">Risk Trend</h3>
+                <p className="text-[10px] text-[rgb(var(--text-muted))]">Rolling score across chunks</p>
               </div>
-              <span className="text-xs font-mono text-text-muted">Threshold: {orgPolicy.thresholds.high_min}/100</span>
+              <span className="text-[10px] font-mono text-[rgb(var(--text-muted))]">
+                Threshold: {orgPolicy.thresholds.high_min}
+              </span>
             </div>
             <RiskTrendChart data={history} threshold={orgPolicy.thresholds.high_min} />
           </div>
         </div>
 
-        {/* Right 1 Col: Explainability & Context Controls */}
-        <div className="space-y-6">
-          {/* Signal Breakdown */}
-          <div className="card p-5 space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold text-text-primary">Signal Breakdown</h3>
-              <p className="text-[11px] text-text-secondary">4-way multi-factor fusion metrics</p>
-            </div>
+        {/* Right: Signals + Context */}
+        <div className="space-y-4">
+          <div className="card">
+            <h3 className="text-sm font-semibold text-[rgb(var(--text-primary))] mb-3">Signal Breakdown</h3>
             <SignalBreakdown signals={signals} />
           </div>
 
-          {/* Call Context Toggles */}
-          <div className="card p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-text-primary flex items-center gap-1.5">
-                  <SlidersHorizontal className="w-4 h-4 text-accent" /> Call Scenario Context
-                </h3>
-                <p className="text-[11px] text-text-secondary">Simulate metadata risk multipliers</p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
+          <div className="card">
+            <h3 className="text-sm font-semibold text-[rgb(var(--text-primary))] mb-3">Call Context</h3>
+            <div className="space-y-2">
               {[
-                { id: 'first_time_contact', label: 'First-Time Contact', desc: 'Caller not in trust history' },
-                { id: 'high_value', label: 'High-Value Request', desc: 'Wire transfer, OTP or sensitive transaction' },
-                { id: 'odd_hour', label: 'Unusual Call Time', desc: 'Call outside expected business hours' },
-                { id: 'sensitive_data_request', label: 'Sensitive Data Request', desc: 'Asking for credentials or KYC docs' },
+                { id: 'first_time_contact', label: 'First-Time Contact', desc: 'Not in trust history' },
+                { id: 'high_value', label: 'High-Value Request', desc: 'Wire transfer, OTP' },
+                { id: 'odd_hour', label: 'Unusual Time', desc: 'Outside business hours' },
+                { id: 'sensitive_data_request', label: 'Sensitive Data', desc: 'Credentials, KYC' },
               ].map((item) => (
                 <label
                   key={item.id}
-                  className="flex items-center justify-between p-2.5 rounded-lg bg-bg-surface border border-bg-border hover:border-bg-elevated cursor-pointer transition-colors"
+                  className="flex items-center justify-between p-2 rounded-md hover:bg-[var(--hover-bg)] cursor-pointer transition-colors"
                 >
-                  <div className="pr-3">
-                    <span className="text-xs font-medium text-text-primary block">{item.label}</span>
-                    <span className="text-[10px] text-text-muted block">{item.desc}</span>
+                  <div>
+                    <span className="text-xs font-medium text-[rgb(var(--text-primary))] block">{item.label}</span>
+                    <span className="text-[10px] text-[rgb(var(--text-muted))]">{item.desc}</span>
                   </div>
                   <input
                     type="checkbox"
                     checked={context[item.id as keyof typeof context] as boolean}
                     onChange={(e) =>
-                      setContext((prev) => ({
-                        ...prev,
-                        [item.id]: e.target.checked,
-                      }))
+                      setContext((prev) => ({ ...prev, [item.id]: e.target.checked }))
                     }
-                    className="w-4 h-4 rounded bg-bg-card border-bg-border text-accent focus:ring-0 cursor-pointer"
+                    className="w-3.5 h-3.5 rounded accent-[rgb(var(--accent))] cursor-pointer"
                   />
                 </label>
               ))}

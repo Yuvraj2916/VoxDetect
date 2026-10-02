@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { VoxDetectWebSocket } from '@/services/websocket';
 import { useMicrophone } from './useMicrophone';
 import { useAlertContext } from '@/context/AlertContext';
+import { useSignalSettings } from '@/context/SignalSettingsContext';
 import type {
   OrgType,
   WSStatus,
@@ -16,6 +17,7 @@ import type {
   RiskHistoryPoint,
   CallContext,
   SignalBreakdownData,
+  FusionMask,
 } from '@/types';
 
 const MAX_HISTORY = 60;  // Keep at most 60 score points in memory
@@ -34,10 +36,12 @@ export interface LiveMonitoringState {
   chunkCount: number;
   wsError: string | null;
   micStatus: import('./useMicrophone').MicStatus;
+  audioLevel: number;
 }
 
 export function useLiveMonitoring(org: OrgType, context: Partial<CallContext>) {
   const { addToast } = useAlertContext();
+  const { fusion } = useSignalSettings();
 
   const [state, setState] = useState<LiveMonitoringState>({
     wsStatus: 'idle',
@@ -53,24 +57,28 @@ export function useLiveMonitoring(org: OrgType, context: Partial<CallContext>) {
     chunkCount: 0,
     wsError: null,
     micStatus: 'idle',
+    audioLevel: 0,
   });
 
   const wsRef = useRef<VoxDetectWebSocket | null>(null);
   const prevBandRef = useRef<string | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastToastRef = useRef<number>(0);
   const isMonitoringRef = useRef(false);
   const orgRef = useRef(org);
   const contextRef = useRef(context);
+  const fusionRef = useRef(fusion);
 
   // Keep refs in sync so reconnect picks up latest values
   useEffect(() => { orgRef.current = org; }, [org]);
   useEffect(() => { contextRef.current = context; }, [context]);
+  useEffect(() => { fusionRef.current = fusion; }, [fusion]);
 
   const handleChunk = useCallback((chunk: ArrayBuffer) => {
     wsRef.current?.sendAudioChunk(chunk);
   }, []);
 
-  const { status: micStatus, start: startMic, stop: stopMic } = useMicrophone({
+  const { status: micStatus, start: startMic, stop: stopMic, level: audioLevel } = useMicrophone({
     chunkIntervalMs: 3000,
     onChunk: handleChunk,
     onError: (msg) => {
@@ -86,7 +94,7 @@ export function useLiveMonitoring(org: OrgType, context: Partial<CallContext>) {
 
   const handleRiskUpdate = useCallback(
     (data: StreamChunkResult) => {
-      const score = data.rolling_risk_score ?? data.risk_score;
+      const score = data.risk_score ?? data.rolling_risk_score;
 
       setState((prev) => {
         const newHistory = [
@@ -117,26 +125,29 @@ export function useLiveMonitoring(org: OrgType, context: Partial<CallContext>) {
         };
       });
 
-      // Trigger alert on band escalation
+      // Trigger alert on band escalation into high/critical.
+      // Cooldown so rapid band yo-yoing doesn't spam a toast per chunk.
       const currentBand = data.band;
       const prevBand = prevBandRef.current;
       const escalated =
         (currentBand === 'high' && prevBand !== 'high' && prevBand !== 'critical') ||
         (currentBand === 'critical' && prevBand !== 'critical');
 
-      if (escalated && data.flagged) {
-        const isCritical = currentBand === 'critical';
-        addToast({
-          type: isCritical ? 'critical_risk' : 'high_risk',
-          title: isCritical ? '🔴 CRITICAL RISK DETECTED' : '⚠ HIGH RISK DETECTED',
-          message: `Risk score: ${Math.round(score ?? 0)}/100. ${
-            data.recommended_action ? '' : 'Potential voice-cloning detected.'
-          }`,
-          score: Math.round(score ?? 0),
-          band: currentBand ?? undefined,
-          action: data.recommended_action ?? undefined,
-          autoClose: false,
-        });
+      if (escalated && (currentBand === 'high' || currentBand === 'critical')) {
+        const now = Date.now();
+        if (now - lastToastRef.current >= 10000) {
+          lastToastRef.current = now;
+          const isCritical = currentBand === 'critical';
+          addToast({
+            type: isCritical ? 'critical_risk' : 'high_risk',
+            title: isCritical ? 'Voice cloning confirmed' : 'High risk of voice cloning',
+            message: `Risk score: ${Math.round(score ?? 0)}/100`,
+            detail: `Chunk ${data.chunk_index} · rolling ${Math.round(data.rolling_risk_score ?? 0)}/100`,
+            score: Math.round(score ?? 0),
+            band: currentBand ?? undefined,
+            action: data.recommended_action ?? undefined,
+          });
+        }
       }
 
       prevBandRef.current = currentBand;
@@ -187,6 +198,7 @@ export function useLiveMonitoring(org: OrgType, context: Partial<CallContext>) {
       odd_hour: contextRef.current.odd_hour ?? false,
       sensitive_data_request: contextRef.current.sensitive_data_request ?? false,
       enrolled_speaker_id: contextRef.current.enrolled_speaker_id ?? null,
+      fusion: fusionRef.current,
     });
 
     wsRef.current = ws;
@@ -195,6 +207,7 @@ export function useLiveMonitoring(org: OrgType, context: Partial<CallContext>) {
   const startMonitoring = useCallback(async () => {
     isMonitoringRef.current = true;
     prevBandRef.current = null;
+    lastToastRef.current = 0;
     setState((prev) => ({
       ...prev,
       wsStatus: 'connecting',
@@ -238,6 +251,7 @@ export function useLiveMonitoring(org: OrgType, context: Partial<CallContext>) {
 
   return {
     ...state,
+    audioLevel,
     startMonitoring,
     stopMonitoring,
     isMonitoring: isMonitoringRef.current,

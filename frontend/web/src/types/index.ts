@@ -29,7 +29,7 @@ export interface OrgConfig {
 export const ORG_CONFIGS: Record<OrgType, OrgConfig> = {
   bank: {
     organization: 'bank',
-    thresholds: { low_max: 25, medium_max: 60, high_min: 60, critical_min: 85 },
+    thresholds: { low_max: 7.5, medium_max: 80, high_min: 7.5, critical_min: 85 },
     actions: {
       low: 'No action required. Transaction may proceed.',
       medium: 'Request secondary authentication before authorising transaction.',
@@ -39,7 +39,7 @@ export const ORG_CONFIGS: Record<OrgType, OrgConfig> = {
   },
   enterprise: {
     organization: 'enterprise',
-    thresholds: { low_max: 30, medium_max: 70, high_min: 70, critical_min: 90 },
+    thresholds: { low_max: 7.5, medium_max: 80, high_min: 7.5, critical_min: 85 },
     actions: {
       low: 'No action required. Continue normally.',
       medium: 'Apply additional identity verification before proceeding.',
@@ -49,7 +49,7 @@ export const ORG_CONFIGS: Record<OrgType, OrgConfig> = {
   },
   government: {
     organization: 'government',
-    thresholds: { low_max: 20, medium_max: 55, high_min: 55, critical_min: 80 },
+    thresholds: { low_max: 7.5, medium_max: 80, high_min: 7.5, critical_min: 85 },
     actions: {
       low: 'No action required. Continue processing.',
       medium: 'Initiate secondary biometric or document verification.',
@@ -69,6 +69,23 @@ export interface SignalBreakdownData {
   voiceprint_risk: number | null;
   context_risk: number | null;
 }
+
+// Which signals vote in the weighted verdict. Only "model" is enabled by
+// default (the raw deepfake classifier drives the verdict); the others are
+// surfaced for transparency until the user opts into fusion in Settings.
+export interface FusionMask {
+  model: boolean;
+  prosody_anomaly: boolean;
+  voiceprint_risk: boolean;
+  context_risk: boolean;
+}
+
+export const DEFAULT_FUSION: FusionMask = {
+  model: true,
+  prosody_anomaly: false,
+  voiceprint_risk: false,
+  context_risk: false,
+};
 
 // ── Call Context ─────────────────────────────────────────────────────
 export interface CallContext {
@@ -108,6 +125,7 @@ export interface StreamMetadata {
   odd_hour: boolean;
   sensitive_data_request: boolean;
   enrolled_speaker_id: string | null;
+  fusion?: Partial<Record<keyof FusionMask, boolean>>;
 }
 
 export interface StreamReadyMessage {
@@ -183,6 +201,8 @@ export interface HealthResponse {
   version: string;
   database?: string | null;
   ml_service?: string | null;
+  model_source?: string | null;
+  device?: string | null;
 }
 
 // ── UI State ─────────────────────────────────────────────────────────
@@ -207,6 +227,8 @@ export interface ToastAlert {
   type: 'high_risk' | 'critical_risk' | 'info' | 'error' | 'success';
   title: string;
   message: string;
+  /** Optional slim second line of context (rendered smaller, keeps toast thin). */
+  detail?: string;
   score?: number;
   band?: string;
   action?: string;

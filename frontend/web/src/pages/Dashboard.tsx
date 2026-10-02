@@ -1,133 +1,172 @@
 /**
- * src/pages/Dashboard.tsx
+ * src/pages/Dashboard.tsx — Clean command-center launcher.
+ *
+ * No dead widgets or mock data. Purpose-of-page is navigation: each card
+ * represents one real tool and links to its page. System status is live from
+ * the health API. The org switcher in the TopBar sets the active policy, so
+ * it is simply reflected here (no duplicate, confusing control).
  */
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useOrganization } from '@/context/OrganizationContext';
 import { useHealthCheck } from '@/hooks/useHealthCheck';
+import { useOrganization } from '@/context/OrganizationContext';
 import { ORG_CONFIGS } from '@/types';
-import {
-  ShieldCheck,
-  Radio,
-  FileAudio,
-  UserCheck,
-  Bell,
-  Activity,
-  ArrowRight,
-  Server,
-  Cpu,
-  Database,
-} from 'lucide-react';
+import { AudioWaveform, Radio, ShieldAlert, ScrollText, UserPlus, Settings, CheckCircle2, XCircle } from 'lucide-react';
+
+interface ToolCard {
+  to: string;
+  title: string;
+  description: string;
+  cta: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  accent: string;
+}
+
+const TOOLS: ToolCard[] = [
+  {
+    to: '/analyze',
+    title: 'Analyze Audio',
+    description: 'Upload a voice clip and get a real-vs-clone verdict with a full signal breakdown.',
+    cta: 'Upload a file',
+    icon: AudioWaveform,
+    accent: 'rgb(var(--accent))',
+  },
+  {
+    to: '/live-call',
+    title: 'Live Monitor',
+    description: 'Stream your microphone and score every chunk in real time. Best for live-call demos.',
+    cta: 'Start monitoring',
+    icon: Radio,
+    accent: 'rgb(var(--risk-high))',
+  },
+  {
+    to: '/alerts',
+    title: 'Alerts',
+    description: 'Review flagged high and critical risk detections raised against the active policy.',
+    cta: 'Review alerts',
+    icon: ShieldAlert,
+    accent: 'rgb(var(--risk-critical))',
+  },
+  {
+    to: '/audit',
+    title: 'Audit Log',
+    description: 'Browse the full history of past analyses with scores, bands and outcomes.',
+    cta: 'View audit trail',
+    icon: ScrollText,
+    accent: 'rgb(var(--risk-medium))',
+  },
+  {
+    to: '/voiceprints',
+    title: 'Voiceprints',
+    description: 'Enroll reference speakers so voiceprint fusion can flag cloned enrollment audio.',
+    cta: 'Enroll a speaker',
+    icon: UserPlus,
+    accent: 'rgb(var(--accent-soft))',
+  },
+];
 
 export function Dashboard() {
+  const { health, error, lastChecked } = useHealthCheck();
   const { org } = useOrganization();
-  const { health } = useHealthCheck();
   const orgPolicy = ORG_CONFIGS[org];
+  const online = health?.status === 'ok';
+
+  const statusItems = [
+    { label: 'Backend', value: online ? 'Online' : 'Offline', ok: online },
+    { label: 'ML Engine', value: health?.ml_service || 'wav2vec2-XLSR', ok: online },
+    { label: 'Database', value: health?.database || 'SQLite', ok: online },
+    { label: 'Version', value: health?.version || 'N/A', ok: true },
+  ];
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
-      {/* Hero Banner */}
-      <div className="card p-8 bg-gradient-to-r from-bg-surface via-bg-elevated to-bg-card border-bg-border relative overflow-hidden">
-        <div className="max-w-2xl space-y-3 relative z-10">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-accent/15 border border-accent/30 text-accent text-xs font-semibold">
-            <ShieldCheck className="w-4 h-4" /> Real-Time Voice Authenticity Engine
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-text-primary">
-            AI-Powered Voice Cloning & Impersonation Prevention
-          </h1>
-          <p className="text-sm text-text-secondary leading-relaxed">
-            Multi-signal acoustic defense combining fine-tuned Wav2Vec2, prosody anomaly detection,
-            ECAPA-TDNN speaker verification, and contextual risk scoring.
+    <div className="space-y-6 max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold text-[rgb(var(--text-primary))]">Command Center</h1>
+          <p className="text-xs text-[rgb(var(--text-muted))] mt-1">
+            Pick a tool to get started. Active policy:{' '}
+            <span className="font-mono text-[rgb(var(--text-secondary))] capitalize">{org}</span>
+            {' '}{orgPolicy.actions.low}
           </p>
-
-          <div className="pt-3 flex flex-wrap items-center gap-3">
-            <Link to="/live-call" className="btn btn-primary btn-lg flex items-center gap-2 shadow-glow-medium">
-              <Radio className="w-4 h-4 animate-pulse" /> Start Live Monitoring
-            </Link>
-            <Link to="/analyze" className="btn btn-ghost btn-lg flex items-center gap-2">
-              <FileAudio className="w-4 h-4" /> Batch Clip Analysis
-            </Link>
-          </div>
         </div>
-
-        <div className="absolute right-6 top-1/2 -translate-y-1/2 hidden lg:flex items-center justify-center opacity-10 pointer-events-none">
-          <ShieldCheck className="w-72 h-72 text-accent" />
-        </div>
+        <Link to="/settings" className="btn btn-ghost btn-sm ml-auto">
+          <Settings className="w-3.5 h-3.5" /> Settings
+        </Link>
       </div>
 
-      {/* System Status & Policy Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Backend Status Card */}
-        <div className="card p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-text-secondary uppercase">Backend Engine</span>
-            <Server className="w-4 h-4 text-accent" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold font-mono text-text-primary">
-              {health?.status === 'ok' ? 'Online' : 'Checking...'}
-            </span>
-            <span className="text-xs text-text-muted">FastAPI Service</span>
-          </div>
-          <div className="text-[11px] text-text-secondary space-y-1 pt-2 border-t border-bg-border">
-            <div className="flex justify-between">
-              <span>Database:</span>
-              <span className="font-mono text-green-400">{health?.database || 'SQLite / Memory'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>ML Inference:</span>
-              <span className="font-mono text-accent">{health?.ml_service || 'Wav2Vec2 Ready'}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Current Profile Card */}
-        <div className="card p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-text-secondary uppercase">Active Policy</span>
-            <Cpu className="w-4 h-4 text-accent" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold font-mono capitalize text-text-primary">{org} Profile</span>
-          </div>
-          <div className="text-[11px] text-text-secondary space-y-1 pt-2 border-t border-bg-border">
-            <div className="flex justify-between">
-              <span>High Risk Threshold:</span>
-              <span className="font-mono text-red-400">&gt; {orgPolicy.thresholds.high_min} / 100</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Critical Action:</span>
-              <span className="text-text-primary truncate max-w-[150px]">Freeze / Escalate</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Links Card */}
-        <div className="card p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-text-secondary uppercase">Quick Navigation</span>
-            <Activity className="w-4 h-4 text-accent" />
-          </div>
-          <div className="space-y-2 pt-1">
+      {/* Tool cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {TOOLS.map((tool) => {
+          const Icon = tool.icon;
+          return (
             <Link
-              to="/voiceprints"
-              className="flex items-center justify-between p-2 rounded bg-bg-surface hover:bg-bg-elevated text-xs transition-colors"
+              key={tool.to}
+              to={tool.to}
+              className="group card !p-5 flex flex-col hover:border-[rgb(var(--accent))/0.5] hover:shadow-md transition-all"
             >
-              <span className="flex items-center gap-2">
-                <UserCheck className="w-3.5 h-3.5 text-accent" /> Voiceprint Enrollment
+              <div
+                className="w-10 h-10 rounded-lg flex items-center justify-center mb-3 text-white shadow-md transition-all group-hover:scale-105"
+                style={{ backgroundColor: tool.accent }}
+              >
+                <Icon className="w-5 h-5" strokeWidth={2} />
+              </div>
+              <h3 className="text-sm font-semibold text-[rgb(var(--text-primary))] transition-colors">
+                {tool.title}
+              </h3>
+              <p className="text-[11px] text-[rgb(var(--text-muted))] leading-relaxed mt-1 flex-1">
+                {tool.description}
+              </p>
+              <span
+                className="text-[11px] font-medium mt-3"
+                style={{ color: tool.accent }}
+              >
+                {tool.cta} →
               </span>
-              <ArrowRight className="w-3.5 h-3.5 text-text-muted" />
             </Link>
-            <Link
-              to="/alerts"
-              className="flex items-center justify-between p-2 rounded bg-bg-surface hover:bg-bg-elevated text-xs transition-colors"
-            >
-              <span className="flex items-center gap-2">
-                <Bell className="w-3.5 h-3.5 text-accent" /> Alert Evidence History
+          );
+        })}
+
+        {/* System status card */}
+        <div className="card !p-5 flex flex-col">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-[rgb(var(--text-primary))]">System Status</h3>
+            {online ? (
+              <span className="flex items-center gap-1 text-[11px] font-mono text-[rgb(var(--status-online))]">
+                <CheckCircle2 className="w-3.5 h-3.5" /> ONLINE
               </span>
-              <ArrowRight className="w-3.5 h-3.5 text-text-muted" />
-            </Link>
+            ) : (
+              <span className="flex items-center gap-1 text-[11px] font-mono text-[rgb(var(--status-offline))]">
+                <XCircle className="w-3.5 h-3.5" /> OFFLINE
+              </span>
+            )}
           </div>
+          <div className="flex-1 space-y-2 mt-1">
+            {statusItems.map((item) => (
+              <div
+                key={item.label}
+                className="flex items-center justify-between py-1 border-b border-[rgb(var(--border-subtle))] last:border-0"
+              >
+                <span className="text-[11px] text-[rgb(var(--text-secondary))]">{item.label}</span>
+                <span
+                  className={`text-[11px] font-mono ${
+                    item.ok
+                      ? 'text-[rgb(var(--text-primary))]'
+                      : 'text-[rgb(var(--status-offline))]'
+                  }`}
+                >
+                  {item.value}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[9px] font-mono text-[rgb(var(--text-muted))] mt-2">
+            {error
+              ? 'Backend unreachable. Start the VoxDetect API.'
+              : lastChecked
+              ? `Checked ${new Date(lastChecked).toLocaleTimeString()}`
+              : 'Checking…'}
+          </p>
         </div>
       </div>
     </div>

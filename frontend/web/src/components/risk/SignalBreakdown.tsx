@@ -1,8 +1,10 @@
 /**
  * src/components/risk/SignalBreakdown.tsx
- * Visual progress bars for the 4 fused signals.
+ * Horizontal signal bars for the 4 fused detectors, each with a 1-line
+ * description and thicker bars.
  */
 import React from 'react';
+import { useSignalSettings } from '@/context/SignalSettingsContext';
 import type { SignalBreakdownData } from '@/types';
 
 interface Props {
@@ -10,63 +12,85 @@ interface Props {
 }
 
 export function SignalBreakdown({ signals }: Props) {
+  const { fusion } = useSignalSettings();
+
   const signalConfigs = [
     {
-      name: 'Deepfake Audio Model',
-      description: 'Wav2Vec2 acoustic/spectral artifacts',
+      name: 'Deepfake Model',
+      desc: 'Cloned or synthetic voice detection via Wav2Vec embeddings',
       value: signals.model,
-      weight: '50%',
-      type: 'risk',
+      key: 'model' as const,
+      decisive: true,
     },
     {
-      name: 'Prosody Anomaly',
-      description: 'Pitch variance, pause rhythm & tempo',
+      name: 'Prosody',
+      desc: 'Anomalies in pitch, rhythm, and intonation patterns',
       value: signals.prosody_anomaly,
-      weight: '25%',
-      type: 'anomaly',
+      key: 'prosody_anomaly' as const,
+      decisive: false,
     },
     {
-      name: 'Voiceprint Mismatch',
-      description: 'Cosine distance to enrolled speaker',
+      name: 'Voiceprint',
+      desc: 'Speaker embedding similarity against enrolled voiceprints',
       value: signals.voiceprint_risk,
-      weight: '15%',
-      type: 'risk',
+      key: 'voiceprint_risk' as const,
+      decisive: false,
     },
     {
-      name: 'Call Context Risk',
-      description: 'Metadata flags & abnormal scenario',
+      name: 'Context',
+      desc: 'Lexical & semantic coherence signals in the transcript',
       value: signals.context_risk,
-      weight: '10%',
-      type: 'risk',
+      key: 'context_risk' as const,
+      decisive: false,
     },
   ];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
       {signalConfigs.map((sig) => {
         const hasVal = sig.value !== null && sig.value !== undefined;
         const pct = hasVal ? Math.min(100, Math.max(0, Math.round(sig.value! * 100))) : 0;
-        
-        let barColor = 'bg-green-500';
-        if (pct >= 70) barColor = 'bg-red-500';
-        else if (pct >= 35) barColor = 'bg-yellow-500';
+        const inVerdict = sig.decisive || fusion[sig.key];
+
+        // Color: teal for low, amber for mid, orange/red for high
+        let barColor = 'bg-[rgb(var(--risk-low))]';
+        if (pct >= 70) barColor = 'bg-[rgb(var(--risk-high))]';
+        else if (pct >= 35) barColor = 'bg-[rgb(var(--risk-medium))]';
 
         return (
-          <div key={sig.name} className="bg-bg-surface p-3 rounded-lg border border-bg-border">
-            <div className="flex justify-between items-center mb-1">
-              <div>
-                <span className="text-xs font-semibold text-text-primary">{sig.name}</span>
-                <span className="ml-2 text-[10px] text-text-muted">Weight: {sig.weight}</span>
+          <div key={sig.name}>
+            {/* Header row */}
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-[rgb(var(--text-primary))]">
+                  {sig.name}
+                </span>
+                {sig.decisive && (
+                  <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[rgb(var(--accent))] text-white">
+                    Decisive
+                  </span>
+                )}
+                {inVerdict && !sig.decisive && (
+                  <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[rgb(var(--accent))/0.15] text-[rgb(var(--accent-soft))] border border-[rgb(var(--accent))/0.3]">
+                    In verdict
+                  </span>
+                )}
               </div>
-              <span className="text-xs font-mono font-bold text-text-primary">
+              <span className="text-xs font-mono font-semibold text-[rgb(var(--text-primary))]">
                 {hasVal ? `${pct}%` : 'N/A'}
               </span>
             </div>
-            <p className="text-[11px] text-text-secondary mb-1.5">{sig.description}</p>
-            <div className="w-full h-1.5 bg-bg-card rounded-full overflow-hidden">
+
+            {/* Description */}
+            <p className="text-[11px] leading-snug text-[rgb(var(--text-muted))] mb-1.5">
+              {sig.desc}
+            </p>
+
+            {/* Bar */}
+            <div className="w-full h-2 bg-[rgba(255,255,255,0.05)] rounded-full overflow-hidden">
               <div
-                className={`h-full ${barColor} transition-all duration-500 rounded-full`}
-                style={{ width: `${pct}%` }}
+                className={`h-full rounded-full ${barColor} signal-bar-fill`}
+                style={{ width: hasVal ? `${Math.max(pct, sig.decisive ? 6 : 0)}%` : '0%' }}
               />
             </div>
           </div>
